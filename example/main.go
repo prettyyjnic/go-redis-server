@@ -38,7 +38,7 @@ func main() {
 	}()
 
 	myhandler := &MyHandler{}
-	srv, err := redis.NewServer(redis.DefaultConfig().Proto("tcp").Host("127.0.0.1").Port(6379).Handler(myhandler))
+	srv, err := redis.NewServer(redis.DefaultConfig().Proto("tcp").Host("127.0.0.1").Port(6389).Handler(myhandler))
 	//srv, err := redis.NewServer(redis.DefaultConfig().Proto("unix").Host("/tmp/redis.sock").Handler(myhandler))
 	if err != nil {
 		panic(err)
@@ -46,6 +46,10 @@ func main() {
 	if err := srv.RegisterFct("test2", Test2); err != nil {
 		panic(err)
 	}
+	//go func() {
+	//	<-time.After(time.Second*5)
+	//	srv.Shutdown()
+	//}()
 	if err := srv.ListenAndServe(); err != nil {
 		panic(err)
 	}
