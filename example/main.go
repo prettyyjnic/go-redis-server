@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	redis "github.com/dotcloud/go-redis-server"
+	redis "github.com/prettyyjnic/go-redis-server"
 )
 
 type MyHandler struct {
@@ -38,7 +38,8 @@ func main() {
 	}()
 
 	myhandler := &MyHandler{}
-	srv, err := redis.NewServer(redis.DefaultConfig().Proto("unix").Host("/tmp/redis.sock").Handler(myhandler))
+	srv, err := redis.NewServer(redis.DefaultConfig().Proto("tcp").Host("127.0.0.1").Port(6379).Handler(myhandler))
+	//srv, err := redis.NewServer(redis.DefaultConfig().Proto("unix").Host("/tmp/redis.sock").Handler(myhandler))
 	if err != nil {
 		panic(err)
 	}

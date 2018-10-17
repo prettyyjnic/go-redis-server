@@ -353,7 +353,7 @@ func (h *DefaultHandler) Select(key string) error {
 	h.dbs[h.currentDb] = h.Database
 	h.currentDb = index
 	if _, exists := h.dbs[index]; !exists {
-		println("DB not exits, create ", index)
+		Debugf("DB not exits, create %d", index)
 		h.dbs[index] = NewDatabase(nil)
 	}
 	h.Database = h.dbs[index]

@@ -17,7 +17,7 @@ Sample code
 package main
 
 import (
-	redis "github.com/dotcloud/go-redis-server"
+	redis "github.com/prettyyjnic/go-redis-server"
 )
 
 type MyHandler struct {
@@ -35,9 +35,13 @@ func (h *MyHandler) SET(key string, value []byte) error {
 }
 
 func main() {
-	handler, _ := redis.NewAutoHandler(&MyHandler{values: make(map[string][]byte)})
-	server := &redis.Server{Handler: handler, Addr: ":6389"}
-	server.ListenAndServe()
+    srv, err := redis.NewServer(redis.DefaultConfig().Proto("unix").Host("/tmp/redis.sock").Handler(&MyHandler{}))
+	if err != nil {
+		panic(err)
+	}
+	if err := srv.ListenAndServe(); err != nil {
+		panic(err)
+	}
 }
 ```
 
