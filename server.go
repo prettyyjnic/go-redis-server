@@ -6,8 +6,6 @@ package redis
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net"
 	"reflect"
 )
@@ -17,6 +15,7 @@ type Server struct {
 	Addr         string // TCP address to listen on, ":6389" if empty
 	MonitorChans []chan string
 	methods      map[string]HandlerFn
+	exitChan	 chan struct{}
 }
 
 func (srv *Server) ListenAndServe() error {
@@ -43,11 +42,16 @@ func (srv *Server) Serve(l net.Listener) error {
 	defer l.Close()
 	srv.MonitorChans = []chan string{}
 	for {
-		rw, err := l.Accept()
-		if err != nil {
-			return err
+		select{
+		case <-srv.exitChan:
+			return nil
+		default:
+			rw, err := l.Accept()
+			if err != nil {
+				return err
+			}
+			go srv.ServeClient(rw)
 		}
-		go srv.ServeClient(rw)
 	}
 }
 
@@ -55,24 +59,15 @@ func (srv *Server) Serve(l net.Listener) error {
 // It reads commands using the redis protocol, passes them to `handler`,
 // and returns the result.
 func (srv *Server) ServeClient(conn net.Conn) (err error) {
+	clientChan := make(chan struct{})
 	defer func() {
 		if err != nil {
 			fmt.Fprintf(conn, "-%s\n", err)
 		}
+		Debugf("Client disconnected")
+		close(clientChan)
+		//close()
 		conn.Close()
-	}()
-
-	clientChan := make(chan struct{})
-
-	// Read on `conn` in order to detect client disconnect
-	go func() {
-		// Close chan in order to trigger eventual selects
-		defer close(clientChan)
-		defer Debugf("Client disconnected")
-		// FIXME: move conn within the request.
-		if false {
-			io.Copy(ioutil.Discard, conn)
-		}
 	}()
 
 	var clientAddr string
@@ -89,21 +84,30 @@ func (srv *Server) ServeClient(conn net.Conn) (err error) {
 	}
 
 	for {
-		request, err := parseRequest(conn)
-		if err != nil {
-			return err
-		}
-		request.Host = clientAddr
-		request.ClientChan = clientChan
-		reply, err := srv.Apply(request)
-		if err != nil {
-			return err
-		}
-		if _, err = reply.WriteTo(conn); err != nil {
-			return err
+		select{
+		case <-srv.exitChan:
+			return nil
+		default:
+			request, err := parseRequest(conn)
+			if err != nil {
+				return err
+			}
+			request.Host = clientAddr
+			reply, err := srv.Apply(request)
+			if err != nil {
+				return err
+			}
+			if _, err = reply.WriteTo(conn); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
+}
+
+func (srv *Server) Shutdown()  {
+	Debugf("server exiting...")
+	close(srv.exitChan)
 }
 
 func NewServer(c *Config) (*Server, error) {
@@ -136,5 +140,6 @@ func NewServer(c *Config) (*Server, error) {
 		}
 		srv.Register(method.Name, handlerFn)
 	}
+	srv.exitChan = make(chan struct{}, 1)
 	return srv, nil
 }

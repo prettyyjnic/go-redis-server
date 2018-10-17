@@ -105,7 +105,7 @@ func (srv *Server) handlerFn(autoHandler interface{}, f *reflect.Value, checkers
 			ret = result[0].Interface()
 			return srv.createReply(request, ret)
 		}
-		return &StatusReply{code: "OK"}, nil
+		return &StatusReply{Code: "OK"}, nil
 	}, nil
 }
 
@@ -154,10 +154,6 @@ func (srv *Server) createReply(r *Request, val interface{}) (ReplyWriter, error)
 	case *ChannelWriter:
 		return v, nil
 	case *MultiChannelWriter:
-		Debugf("New client")
-		for _, mcw := range v.Chans {
-			mcw.clientChan = r.ClientChan
-		}
 		return v, nil
 	default:
 		return nil, fmt.Errorf("Unsupported type: %s (%T)", v, v)
